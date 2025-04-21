@@ -1,43 +1,58 @@
 #include<iostream>
+#include<fstream>
+#include<string>
 using namespace std;
+int main();
 class user {
-protected: 
-	string username;
+private: 
+	string cnic;
 	string password;
-private:
 	static int statid;
 	int id = statid++;
 	string name;
 	string city;
 	string province;
 public:
-	user() {};
-	user(string u,string p): username(u),password(p) {
-	
-	}
-	bool login(string u, string p)
+	user() {}; //default constructor
+	string getname() { return name; }  //utility functions
+	string getcity() { return city; }
+	string getprovince() { return province; }
+	string getcnic() { return cnic; }
+	string getpassword() { return password; }
+	void setname(string n) { name = n; }
+	void setcity(string c) { city = c; }
+	void setprovince(string p) { province = p; }
+	bool login(string c, string p)
 	{
-		//select username and password from voter table
-		if (username == u && password == p){
+		if (cnic == c && password == p){
 			return 1;
 		}
 		else
 			return 0;
 	}
-	void setusername(string u) {
-		username = u;
-		id++;
+	void setcnic(string c) {
+		cnic = c;
 		//query of insert is called in voter table
 	}
 	void setpassword(string p) {
 		password = p;
 		//query of insert is called in voter table
 	}
-	void setcredentials(string n, string c, string p) {
-		name = n;
-		city = c;
-		province = p;
+	void setcredentials(string cn,string pass,string n, string c, string p) 
+	{
 		//add insert query to insert it in voter table
+		fstream voter("voter.txt",ios::app);
+		if (!voter)
+			cerr << "Error finding file .....\n";
+		else {
+			voter << cn << endl;
+			voter << pass << endl;
+			voter << n << endl;
+			voter << c << endl;
+			voter << p << endl;
+		}
+		voter.close();
+		main();
 	}
 	~user(){} 
 };
@@ -46,10 +61,11 @@ public:
     void createAccount()
     {
 		int c;      //for choice
-	cout << "Do you want to create your account \n  1. Yes \n  2. No" << endl;
+	cout << "Do you want to create your account \n  1. Yes \n  2. No  \n 3. press any key instead of 1 and 2 to exit " << endl;
 	cin >> c;
 	switch (c) {
 	case 1: getInput();break;
+	case 2: system("cls");main();break; // is sy dobara main me ja k re-enter kr skty hain
 	default: break;
 	           }
     }
@@ -69,31 +85,60 @@ public:
 		} while (c != 4);
 	} 
 	void getInput() {
-		string u, p, n, c, pr;
+		string cn, p, n, c, pr;
 		int a;
-		cout << "enter your username " << endl;
-		cin >> u;
+		cout << "enter your cnic " << endl;
+		cin >> cn;
 		cout << "enter password " << endl;
 		cin >> p;
 		cout << "enter your name : " << endl;
 		cin >> n;
 		cout << "Enter your city : " << endl;
 		cin >> c;
-		cout << "Enter your prvince : " << endl;
+		cout << "Enter your province : " << endl;
 		cin >> pr;
 		cout << "Enter your age " << endl;
 		cin >> a;
 		if (a >= 18) {
-			setusername(u);
-			setpassword(p);
-			setcredentials(n, c, pr);
+			cout << "Your account has been created successfully!! \n";
+			setcredentials(cn,p,n,c,pr);
 		}
-		else
+		else {
+			int c = 0;
 			cout << "You are not able to cast vote " << endl;
+			cout << "Do you want to exit or not 1. Enter 1 for yes \n 2. Enter 2 for no \n";
+			if (c == 1)
+				exit(0);
+			else {
+				system("cls");main();
+			}
+		}
 	}
-	void checkcredentials(string u,string p) {
+	voter(string c, string p)  {
+		string cn,pass,na,ci,pro; // to get cnic and password from file
+		//file handling is added
+			ifstream voter("voter.txt");
+		if (!voter)
+			cerr << "error finding file \n";
+		else {
+			while (getline(voter,cn)) {
+				getline(voter, pass);
+				getline(voter, na);
+				getline(voter, ci);
+				getline(voter, pro);
+				if (cn == c && pass == p) {
+					setcnic(cn);
+					setpassword(pass);
+					setname(na);
+					setcity(ci);
+					setprovince(pro);
+					break;
+				}
+			}
+		voter.close();
+		}
 
-		if (login(u, p)) {
+		if (login(c, p)) {
 			cout << "You are logged in successfully !! \n";
 			viewList();
 		}
@@ -102,19 +147,24 @@ public:
 			createAccount();
 		}
 	}
-	voter(string u, string p) : user(u, p) { }
     void ViewStatus()
 	{
 		//select username and user id and candidate id , partyname , city , province of user and candidate
-		cout << "-------------"; // data to be displayed
+		cout << "Voter details \n"; // data to be displayed
+		cout << "Voter name " << getname() << endl;
+		cout << "Voter cnic " << getcnic() << endl;
+		cout << "Voter city " << getcity() << endl;
+		cout << "Voter province " << getprovince() << endl;
+
 	}
 	~voter(){}
 };
 int user::statid = 1;
 int main()
 {
-	string u, p;
-	cout << "Enter username and password \n";
-	cin >> u >> p;
-	voter v(u,p);
+	string c, p;
+	cout << "Enter cnic and password \n";
+	cin >> c >> p;
+	voter v(c,p);
+	return 0;
 }
