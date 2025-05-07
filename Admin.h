@@ -22,9 +22,9 @@ public:
             cout << "\nAdmin Menu\n1. Start Voting\n2. Stop Voting\n3. Add Candidate\n4. Remove Candidate\n5. View Results\n6. Logout\nChoice: ";
             cin >> op;
             if (op == 1) 
-
+				VotingControl::setVotingStatus(true);//Calling a funtion from VotingControl class Created by my Group Member
             else if (op == 2) 
-
+                VotingControl::setVotingStatus(false);//Calling a funtion from VotingControl class Created by my Group Member
             else if (op == 3) 
 
             else if (op == 4) 
