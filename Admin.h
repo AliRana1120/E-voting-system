@@ -25,8 +25,8 @@ public:
 				VotingControl::setVotingStatus(true);//Calling a funtion from VotingControl class Created by my Group Member
             else if (op == 2) 
                 VotingControl::setVotingStatus(false);//Calling a funtion from VotingControl class Created by my Group Member
-			else if (op == 3) addCandidate();//Need to define it also
-			else if (op == 4) removeCandidate();//Need to define it also
+			else if (op == 3) addCandidate();//DONE!!
+			else if (op == 4) removeCandidate();//DONE!!
 			else if (op == 5) viewResults();//Need to define it also
 			else if (op == 4) removeCandidate(); //Need to define it also
 			else if (op == 5) viewResults();//Need to define it also
@@ -58,6 +58,21 @@ public:
         else
             cout << "Error adding candidate: " << mysql_error(DatabaseManager::conn) << endl;
     }
+    void removeCandidate() {
+        string idInput;
+        cout << "Enter Candidate ID to remove: "; cin >> idInput;
+		//Validating Input
+        if (!Validation::isNumeric(idInput)) {
+            cout << "Invalid Candidate ID. Must be numeric.\n";
+            return;
+		}//Query to remove candidate
+        string query = "DELETE FROM Candidates WHERE id=" + idInput;//Reminds me of Phython 
+        if (mysql_query(DatabaseManager::conn, query.c_str()) == 0)
+            cout << "Candidate removed successfully!\n";
+        else
+            cout << "Error removing candidate: " << mysql_error(DatabaseManager::conn) << endl;
+    }
+
 };
 
 #endif
