@@ -15,6 +15,24 @@ class Admin {
     //Who will win in War
 	string username, password;//Most relevant attributes that I could find
 public:    
+	//Time to decide Menu for Admin
+    void menu() {
+        int op;
+        do {
+            cout << "\nAdmin Menu\n1. Start Voting\n2. Stop Voting\n3. Add Candidate\n4. Remove Candidate\n5. View Results\n6. Logout\nChoice: ";
+            cin >> op;
+            if (op == 1) 
+
+            else if (op == 2) 
+
+            else if (op == 3) 
+
+            else if (op == 4) 
+
+            else if (op == 5) 
+
+        } while (op != 6);
+    }
 };
 
 #endif
