@@ -33,6 +33,30 @@ public:
 			else if (op == 6) cout << "Logging out...\n";
 			else cout << "Invalid choice. Try again.\n";
         } while (op != 6);
+	}//INNER THOUGHTS WHY EVEN DEFAULT VALIDATION LIBRARIES EXIST IF WE HAVE TO DEFINE OUR OWN VALIDATION CLASS
+    void addCandidate() {
+        string name, party, type, city, province, password;
+        cout << "Enter Candidate Name: "; cin >> name;
+        cout << "Enter Party: "; cin >> party;
+        cout << "Enter Type (MNA/MPA): "; cin >> type;
+        cout << "Enter City: "; cin >> city;
+        cout << "Enter Province: "; cin >> province;
+        cout << "Set Candidate Password: "; cin >> password;
+		//Validating Inputs
+        if (!Validation::isAlphabetic(name) || !Validation::isAlphabetic(party) ||
+            !(type == "MNA" || type == "MPA") ||
+            !Validation::isAlphabetic(city) || !Validation::isAlphabetic(province) ||
+            !Validation::isAlphanumeric(password)) {
+            cout << "Invalid input. Please ensure all fields follow format.\n";
+            return;
+        }
+        //Performing DataBase Operations
+        string query = "INSERT INTO Candidates (name, party, type, city, province, password) VALUES ('" +
+            name + "', '" + party + "', '" + type + "', '" + city + "', '" + province + "', '" + password + "')";
+        if (mysql_query(DatabaseManager::conn, query.c_str()) == 0)
+            cout << "Candidate added successfully!\n";
+        else
+            cout << "Error adding candidate: " << mysql_error(DatabaseManager::conn) << endl;
     }
 };
 
