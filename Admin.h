@@ -72,6 +72,85 @@ public:
         else
             cout << "Error removing candidate: " << mysql_error(DatabaseManager::conn) << endl;
     }
+    void viewResults() {
+        cout << "\n--- Chief Ministers ---\n";
+        const char* provinces[] = { "Punjab", "Sindh", "KPK", "Balochistan", "Gilgit" };
+		// Step 1: Get winning party in each province for MPA
+        for (int i = 0; i < 5; ++i) {
+            string query = "SELECT party, COUNT(*) as seats "
+                "FROM Candidates "
+                "WHERE type='MPA' AND province='" + string(provinces[i]) + "' "
+                "GROUP BY party "
+                "ORDER BY seats DESC, SUM(votes) DESC "
+                "LIMIT 1";
+            
+            if (mysql_query(DatabaseManager::conn, query.c_str()) == 0) {
+                MYSQL_RES* res = mysql_store_result(DatabaseManager::conn);
+                if (res) {
+                    MYSQL_ROW row = mysql_fetch_row(res);
+                    if (row)
+                        cout << provinces[i] << ": " << row[0] << " (" << row[1] << " seats)\n";
+                    else
+                        cout << provinces[i] << ": No data available.\n";
+                    mysql_free_result(res);
+                }
+            }
+            else {
+                cout << "Error querying chief minister for " << provinces[i] << ": " << mysql_error(DatabaseManager::conn) << endl;
+            }
+        }
+
+        cout << "\n--- Prime Minister ---\n";
+
+        // Step 2: Get winning party in each province for MNA
+        string query = "SELECT province, party "
+            "FROM (SELECT province, party, COUNT(*) as seats "
+            "FROM Candidates WHERE type='MNA' "
+            "GROUP BY province, party) as T1 "
+            "GROUP BY province "
+            "HAVING MAX(seats) "
+            "ORDER BY province";
+
+        if (mysql_query(DatabaseManager::conn, query.c_str()) != 0) {
+            cout << "Error retrieving PM data: " << mysql_error(DatabaseManager::conn) << endl;
+            return;
+        }
+
+        MYSQL_RES* res = mysql_store_result(DatabaseManager::conn);
+        if (!res) {
+            cout << "No data for Prime Minister selection.\n";
+            return;
+        }
+		//Step 1: Get winning party in each province for MNA
+        string provinceWins[5];
+        int winCount = 0;
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(res)) && winCount < 5) {
+            if (row[1])
+                provinceWins[winCount++] = row[1];
+        }
+        mysql_free_result(res);
+
+        // Step 2: Count majority party
+        string majorityParty = "";
+        int maxCount = 0;
+        for (int i = 0; i < winCount; ++i) {
+            int count = 0;
+            for (int j = 0; j < winCount; ++j) {
+                if (provinceWins[i] == provinceWins[j])
+                    count++;
+            }
+            if (count > maxCount) {
+                maxCount = count;
+                majorityParty = provinceWins[i];
+            }
+        }
+
+        if (maxCount >= 3)
+            cout << "Prime Minister: " << majorityParty << " (" << maxCount << " provinces)\n";
+        else
+            cout << "No party has majority for Prime Minister.\n";
+    }
 
 };
 
