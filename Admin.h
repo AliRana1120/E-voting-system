@@ -25,12 +25,13 @@ public:
 				VotingControl::setVotingStatus(true);//Calling a funtion from VotingControl class Created by my Group Member
             else if (op == 2) 
                 VotingControl::setVotingStatus(false);//Calling a funtion from VotingControl class Created by my Group Member
-            else if (op == 3) 
-
-            else if (op == 4) 
-
-            else if (op == 5) 
-
+			else if (op == 3) addCandidate();//Need to define it also
+			else if (op == 4) removeCandidate();//Need to define it also
+			else if (op == 5) viewResults();//Need to define it also
+			else if (op == 4) removeCandidate(); //Need to define it also
+			else if (op == 5) viewResults();//Need to define it also
+			else if (op == 6) cout << "Logging out...\n";
+			else cout << "Invalid choice. Try again.\n";
         } while (op != 6);
     }
 };
