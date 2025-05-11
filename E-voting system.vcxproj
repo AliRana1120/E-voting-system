@@ -129,6 +129,9 @@
   <ItemGroup>
     <ClCompile Include="votingSystem.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Validator.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
