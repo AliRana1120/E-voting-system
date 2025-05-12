@@ -3,22 +3,24 @@
 #define VOTER_H
 
 #include <iostream>
+#include <type_traits>
+#include <string>
 #include "Validator.h"
 #include "DatabaseManager.h"
 #include "User.h"
 using namespace std;
 
-class Voter : public User {
+template <typename t> class Voter : public User {  //template class
 private:
-    string cnic;
-    string password;
+    t cnic;
+    t password;
     string name;
     string province;
     string district;
     bool isLoggedIn;
     bool hasVoted;
 
-    bool isVotingOpen() {
+    bool isVotingOpen() {                    //either voting open or close
         MYSQL* conn = DatabaseManager::getConnection();
         mysql_query(conn, "SELECT status FROM election_status WHERE id=1");
         MYSQL_RES* res = mysql_store_result(conn);
@@ -28,18 +30,24 @@ private:
         return open;
     }
 
-    bool registerVoter() {
+    bool registerVoter() {                  //to perform registration
         cout << "\n--- Voter Registration ---\n";
         cout << "Enter CNIC (13 digits without dashes): ";
-        string newCnic;
+        t newCnic;
         cin >> newCnic;
-
-        if (newCnic.length() != 13 || !Validator::isNumeric(newCnic)) {
-            cout << "Invalid CNIC format. Must be 13 digits.\n";
-            return false;
+        if (!(is_same_v<t,string>)) // To check datatype of entered cnic
+        {
+           cnic = string(newCnic);
         }
+        else { cnic = newCnic; }
+            
+        if (cnic.length() != 13 || !Validator::isNumeric(cnic)) {
+                cout << "Invalid CNIC format. Must be 13 digits.\n";
+                return false;
+            }
 
         // Check if CNIC already exists
+        
         MYSQL* conn = DatabaseManager::getConnection();
         string checkQuery = "SELECT id FROM voters WHERE cnic='" + newCnic + "'";
         if (mysql_query(conn, checkQuery.c_str()) == 0) {
@@ -79,9 +87,23 @@ private:
     }
 
 public:
-    Voter() : isLoggedIn(false), hasVoted(false) {}
+    Voter() : isLoggedIn(false), hasVoted(false) {} //constructor default                                                    parameterized
 
-    bool login() override {
+    t getCNIC()                                    //Utility fuctions
+    {
+        return cnic;
+    }
+    t getpass() 
+    { 
+        return password; 
+    }
+    void setcnic(t cnic) {
+        this->cnic = cnic;
+    }
+    void setpass(t password) {
+        this->password = password;
+    }
+    bool login() override {                      
         int choice;
         while (true) {
             cout << "\n--- Voter Portal ---\n";
