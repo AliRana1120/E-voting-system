@@ -15,9 +15,13 @@ public:
 
     void start() override {
         MYSQL* conn = DatabaseManager::getConnection();
-        string q = "UPDATE election_status SET status='start', level='district' WHERE province='" + province + "'";
-        mysql_query(conn, q.c_str());
-        cout << "Local election started for " << province << endl;
+        string query = "UPDATE election_status SET status='start', level='local', province='" + province + "'";
+        if (mysql_query(conn, query.c_str())) {
+            cout << "Error starting local election: " << mysql_error(conn) << "\n";
+        }
+        else {
+            cout << "Local election started for " << province << endl;
+        }
     }
 
     void end() override {

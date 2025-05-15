@@ -1,158 +1,173 @@
+#pragma once
 #ifndef ADMIN_H
 #define ADMIN_H
-//including header files
+
 #include <iostream>
-#include <string>
-#include <mysql.h>
+#include "Validator.h"
+#include "User.h"
 #include "DatabaseManager.h"
-#include "VotingControl.h"
-#include "Validation.h"
+#include "LocalElection.h"
+#include "NationalElection.h"
 using namespace std;
-//Adding obvious class comments that I know I wont need
-class Admin {
-	//Thoughts:
-    //What attributes should I use
-    //Who will win in War
-	string username, password;//Most relevant attributes that I could find
-public:    
-	//Time to decide Menu for Admin
-    void menu() {
-        int op;
-        do {
-            cout << "\nAdmin Menu\n1. Start Voting\n2. Stop Voting\n3. Add Candidate\n4. Remove Candidate\n5. View Results\n6. Logout\nChoice: ";
-            cin >> op;
-            if (op == 1) 
-				VotingControl::setVotingStatus(true);//Calling a funtion from VotingControl class Created by my Group Member
-            else if (op == 2) 
-                VotingControl::setVotingStatus(false);//Calling a funtion from VotingControl class Created by my Group Member
-			else if (op == 3) addCandidate();//DONE!!
-			else if (op == 4) removeCandidate();//DONE!!
-			else if (op == 5) viewResults();//Need to define it also
-			else if (op == 4) removeCandidate(); //Need to define it also
-			else if (op == 5) viewResults();//Need to define it also
-			else if (op == 6) cout << "Logging out...\n";
-			else cout << "Invalid choice. Try again.\n";
-        } while (op != 6);
-	}//INNER THOUGHTS WHY EVEN DEFAULT VALIDATION LIBRARIES EXIST IF WE HAVE TO DEFINE OUR OWN VALIDATION CLASS
+
+class Admin : public User {
+private:
+    string username = "admin";
+    string password = "admin123";
+    void startVoting() {
+        int level;
+        cout << "\nSelect Election Type to Start:\n";
+        cout << "1. Local Election (MPA)\n";
+        cout << "2. National Election (MNA)\n";
+        cout << "Enter choice: ";
+
+        if (!Validator::getIntInput(level)) return;
+
+        if (level == 1) {
+            string province;
+            cout << "Enter Province name: ";
+            cin >> province;
+            LocalElection le(province);
+            le.start();
+        }
+        else if (level == 2) {
+            NationalElection ne;
+            ne.start();
+        }
+        else {
+            cout << "Invalid choice.\n";
+        }
+    }
+
+    void stopVoting() {
+        int level;
+        cout << "\nSelect Election to Stop:\n";
+        cout << "1. District (Local) Election\n";
+        cout << "2. Provincial (National) Election\nChoice: ";
+        if (!Validator::getIntInput(level)) return;
+        if (level == 1) {
+            string province;
+            cout << "Enter Province name: "; cin >> province;
+            LocalElection le(province);
+            le.end();
+        }
+        else if (level == 2) {
+            NationalElection ne;
+            ne.end();
+        }
+        else {
+            cout << "Invalid election level.\n";
+        }
+    }
+
+public:
+    bool login() override {
+        string usr, pwd;
+        cout << "\nEnter Admin Username: "; cin >> usr;
+        cout << "Enter Admin Password: "; cin >> pwd;
+        if (usr == username && pwd == password) {
+            cout << "\nLogin successful!\n";
+            return true;
+        }
+        cout << "\nInvalid admin credentials.\n";
+        return false;
+    }
+
+    void showMenu() override {
+        int ch;
+        while (true) {
+            cout << "\n--- Admin Menu ---\n";
+            cout << "1. Start Voting\n";
+            cout << "2. Stop Voting\n";
+            cout << "3. Add Candidate\n";
+            cout << "4. Remove Candidate\n";
+            cout << "5. View Results\n";
+            cout << "6. Logout\n";
+            cout << "Enter choice: ";
+            if (!Validator::getIntInput(ch)) continue;
+
+            switch (ch) {
+            case 1: startVoting(); break;
+            case 2: stopVoting(); break;
+            case 3: addCandidate(); break;
+            case 4: removeCandidate(); break;
+            case 5: viewResults(); break;
+            case 6: return;
+            default: cout << "Invalid choice. Try again.\n";
+            }
+        }
+    }
+
     void addCandidate() {
-        string name, party, type, city, province, password;
-        cout << "Enter Candidate Name: "; cin >> name;
+        string name, party, type, province, district;
+        int age;
+        cout << "\nEnter Candidate Name: "; cin >> name;
         cout << "Enter Party: "; cin >> party;
-        cout << "Enter Type (MNA/MPA): "; cin >> type;
-        cout << "Enter City: "; cin >> city;
+        cout << "Enter Candidate Type (MNA/MPA): "; cin >> type;
         cout << "Enter Province: "; cin >> province;
-        cout << "Set Candidate Password: "; cin >> password;
-		//Validating Inputs
-        if (!Validation::isAlphabetic(name) || !Validation::isAlphabetic(party) ||
-            !(type == "MNA" || type == "MPA") ||
-            !Validation::isAlphabetic(city) || !Validation::isAlphabetic(province) ||
-            !Validation::isAlphanumeric(password)) {
-            cout << "Invalid input. Please ensure all fields follow format.\n";
-            return;
-        }
-        //Performing DataBase Operations
-        string query = "INSERT INTO Candidates (name, party, type, city, province, password) VALUES ('" +
-            name + "', '" + party + "', '" + type + "', '" + city + "', '" + province + "', '" + password + "')";
-        if (mysql_query(DatabaseManager::conn, query.c_str()) == 0)
-            cout << "Candidate added successfully!\n";
+        cout << "Enter District: "; cin >> district;
+        cout << "Enter Age: "; if (!Validator::getIntInput(age)) return;
+
+        MYSQL* conn = DatabaseManager::getConnection();
+        string query = "INSERT INTO candidates (name, party, type, province, district, age, votes) VALUES ('" +
+            name + "', '" + party + "', '" + type + "', '" + province + "', '" + district + "', '" + to_string(age) + "', 0)";
+        if (mysql_query(conn, query.c_str()) == 0)
+            cout << "Candidate added successfully.\n";
         else
-            cout << "Error adding candidate: " << mysql_error(DatabaseManager::conn) << endl;
+            cout << "Error adding candidate: " << mysql_error(conn) << "\n";
     }
+
     void removeCandidate() {
-        string idInput;
-        cout << "Enter Candidate ID to remove: "; cin >> idInput;
-		//Validating Input
-        if (!Validation::isNumeric(idInput)) {
-            cout << "Invalid Candidate ID. Must be numeric.\n";
-            return;
-		}//Query to remove candidate
-        string query = "DELETE FROM Candidates WHERE id=" + idInput;//Reminds me of Phython 
-        if (mysql_query(DatabaseManager::conn, query.c_str()) == 0)
-            cout << "Candidate removed successfully!\n";
+        int id;
+        cout << "Enter Candidate ID to remove: "; if (!Validator::getIntInput(id)) return;
+        MYSQL* conn = DatabaseManager::getConnection();
+        string query = "DELETE FROM candidates WHERE id=" + to_string(id);
+        if (mysql_query(conn, query.c_str()) == 0)
+            cout << "Candidate removed successfully.\n";
         else
-            cout << "Error removing candidate: " << mysql_error(DatabaseManager::conn) << endl;
+            cout << "Error removing candidate: " << mysql_error(conn) << "\n";
     }
+
     void viewResults() {
-        cout << "\n--- Chief Ministers ---\n";
-        const char* provinces[] = { "Punjab", "Sindh", "KPK", "Balochistan", "Gilgit" };
-		// Step 1: Get winning party in each province for MPA
-        for (int i = 0; i < 5; ++i) {
-            string query = "SELECT party, COUNT(*) as seats "
-                "FROM Candidates "
-                "WHERE type='MPA' AND province='" + string(provinces[i]) + "' "
-                "GROUP BY party "
-                "ORDER BY seats DESC, SUM(votes) DESC "
-                "LIMIT 1";
-            
-            if (mysql_query(DatabaseManager::conn, query.c_str()) == 0) {
-                MYSQL_RES* res = mysql_store_result(DatabaseManager::conn);
-                if (res) {
-                    MYSQL_ROW row = mysql_fetch_row(res);
-                    if (row)
-                        cout << provinces[i] << ": " << row[0] << " (" << row[1] << " seats)\n";
-                    else
-                        cout << provinces[i] << ": No data available.\n";
-                    mysql_free_result(res);
-                }
+        int level;
+        cout << "\nSelect Results to View:\n";
+        cout << "1. District (Local) Results\n";
+        cout << "2. Provincial (National) Results\nChoice: ";
+        if (!Validator::getIntInput(level)) return;
+        if (level == 1) {
+            string province;
+            cout << "Enter Province name: "; cin >> province;
+            MYSQL* conn = DatabaseManager::getConnection();
+            string q = "SELECT id, name, party, votes FROM candidates WHERE type='MPA' AND province='" + province + "' ORDER BY votes DESC";
+            mysql_query(conn, q.c_str());
+            MYSQL_RES* res = mysql_store_result(conn);
+            MYSQL_ROW row;
+            cout << "\n--- Local Results for " << province << " ---\n";
+            while ((row = mysql_fetch_row(res))) {
+                cout << "ID: " << row[0] << " | Name: " << row[1] << " | Party: " << row[2] << " | Votes: " << row[3] << "\n";
             }
-            else {
-                cout << "Error querying chief minister for " << provinces[i] << ": " << mysql_error(DatabaseManager::conn) << endl;
+            mysql_free_result(res);
+        }
+        else if (level == 2) {
+            string province;
+            cout << "Enter Province name: "; cin >> province;
+            MYSQL* conn = DatabaseManager::getConnection();
+            string q = "SELECT id, name, party, votes FROM candidates WHERE type='MNA' AND province='" + province + "' ORDER BY votes DESC";
+            mysql_query(conn, q.c_str());
+            MYSQL_RES* res = mysql_store_result(conn);
+            MYSQL_ROW row;
+            cout << "\n--- National Results for " << province << " ---\n";
+            while ((row = mysql_fetch_row(res))) {
+                cout << "ID: " << row[0] << " | Name: " << row[1] << " | Party: " << row[2] << " | Votes: " << row[3] << "\n";
             }
+            mysql_free_result(res);
+
+            NationalElection ne;
+            ne.countWinner();
         }
-
-        cout << "\n--- Prime Minister ---\n";
-
-        // Step 2: Get winning party in each province for MNA
-        string query = "SELECT province, party "
-            "FROM (SELECT province, party, COUNT(*) as seats "
-            "FROM Candidates WHERE type='MNA' "
-            "GROUP BY province, party) as T1 "
-            "GROUP BY province "
-            "HAVING MAX(seats) "
-            "ORDER BY province";
-
-        if (mysql_query(DatabaseManager::conn, query.c_str()) != 0) {
-            cout << "Error retrieving PM data: " << mysql_error(DatabaseManager::conn) << endl;
-            return;
+        else {
+            cout << "Invalid selection.\n";
         }
-
-        MYSQL_RES* res = mysql_store_result(DatabaseManager::conn);
-        if (!res) {
-            cout << "No data for Prime Minister selection.\n";
-            return;
-        }
-		//Step 1: Get winning party in each province for MNA
-        string provinceWins[5];
-        int winCount = 0;
-        MYSQL_ROW row;
-        while ((row = mysql_fetch_row(res)) && winCount < 5) {
-            if (row[1])
-                provinceWins[winCount++] = row[1];
-        }
-        mysql_free_result(res);
-
-        // Step 2: Count majority party
-        string majorityParty = "";
-        int maxCount = 0;
-        for (int i = 0; i < winCount; ++i) {
-            int count = 0;
-            for (int j = 0; j < winCount; ++j) {
-                if (provinceWins[i] == provinceWins[j])
-                    count++;
-            }
-            if (count > maxCount) {
-                maxCount = count;
-                majorityParty = provinceWins[i];
-            }
-        }
-
-        if (maxCount >= 3)
-            cout << "Prime Minister: " << majorityParty << " (" << maxCount << " provinces)\n";
-        else
-            cout << "No party has majority for Prime Minister.\n";
     }
-
 };
-
 #endif
-
