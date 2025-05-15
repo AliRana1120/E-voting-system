@@ -3,51 +3,70 @@
 #define VOTER_H
 
 #include <iostream>
-#include <type_traits>
-#include <string>
 #include "Validator.h"
 #include "DatabaseManager.h"
 #include "User.h"
 using namespace std;
 
-template <typename t> class Voter : public User {  //template class
+class Voter : public User {
 private:
-    t cnic;
-    t password;
+    string cnic;
+    string password;
     string name;
     string province;
     string district;
     bool isLoggedIn;
-    bool hasVoted;
+    bool hasVotedMNA;
+    bool hasVotedMPA;
 
-    bool isVotingOpen() {                    //either voting open or close
+    bool isMNAVotingOpen() {
         MYSQL* conn = DatabaseManager::getConnection();
-        mysql_query(conn, "SELECT status FROM election_status WHERE id=1");
+        string query = "SELECT status FROM election_status WHERE level='national' AND status='start'";
+
+        if (mysql_query(conn, query.c_str())) {
+            cout << "Error checking MNA election status: " << mysql_error(conn) << endl;
+            return false;
+        }
+
         MYSQL_RES* res = mysql_store_result(conn);
+        if (!res) return false;
+
         MYSQL_ROW row = mysql_fetch_row(res);
-        bool open = (row && string(row[0]) == "start");
+        bool isOpen = (row && string(row[0]) == "start");
         mysql_free_result(res);
-        return open;
+        return isOpen;
     }
 
-    bool registerVoter() {                  //to perform registration
+    bool isMPAVotingOpen() {
+        MYSQL* conn = DatabaseManager::getConnection();
+        string query = "SELECT status FROM election_status WHERE level='local' AND status='start' AND province='" + province + "'";
+
+        if (mysql_query(conn, query.c_str())) {
+            cout << "Error checking MPA election status: " << mysql_error(conn) << endl;
+            return false;
+        }
+
+        MYSQL_RES* res = mysql_store_result(conn);
+        if (!res) return false;
+
+        MYSQL_ROW row = mysql_fetch_row(res);
+        bool isOpen = (row && string(row[0]) == "start");
+        mysql_free_result(res);
+        return isOpen;
+    }
+
+    bool registerVoter() {
         cout << "\n--- Voter Registration ---\n";
         cout << "Enter CNIC (13 digits without dashes): ";
-        t newCnic;
+        string newCnic;
         cin >> newCnic;
-        if (!(is_same_v<t,string>)) // To check datatype of entered cnic
-        {
-           cnic = string(newCnic);
+
+        if (newCnic.length() != 13 || !Validator::isNumeric(newCnic)) {
+            cout << "Invalid CNIC format. Must be 13 digits.\n";
+            return false;
         }
-        else { cnic = newCnic; }
-            
-        if (cnic.length() != 13 || !Validator::isNumeric(cnic)) {
-                cout << "Invalid CNIC format. Must be 13 digits.\n";
-                return false;
-            }
 
         // Check if CNIC already exists
-        
         MYSQL* conn = DatabaseManager::getConnection();
         string checkQuery = "SELECT id FROM voters WHERE cnic='" + newCnic + "'";
         if (mysql_query(conn, checkQuery.c_str()) == 0) {
@@ -73,8 +92,8 @@ private:
         cout << "Set your password: ";
         cin >> password;
 
-        string insertQuery = "INSERT INTO voters (cnic, name, province, district, password) VALUES ('" +
-            newCnic + "', '" + name + "', '" + province + "', '" + district + "', '" + password + "')";
+        string insertQuery = "INSERT INTO voters (cnic, name, province, district, password, has_voted_mna, has_voted_mpa) VALUES ('" +
+            newCnic + "', '" + name + "', '" + province + "', '" + district + "', '" + password + "', 0, 0)";
 
         if (mysql_query(conn, insertQuery.c_str()) == 0) {
             cout << "Registration successful! Please login with your CNIC and password.\n";
@@ -87,23 +106,9 @@ private:
     }
 
 public:
-    Voter() : isLoggedIn(false), hasVoted(false) {} //constructor default                                                    parameterized
+    Voter() : isLoggedIn(false), hasVotedMNA(false), hasVotedMPA(false) {}
 
-    t getCNIC()                                    //Utility fuctions
-    {
-        return cnic;
-    }
-    t getpass() 
-    { 
-        return password; 
-    }
-    void setcnic(t cnic) {
-        this->cnic = cnic;
-    }
-    void setpass(t password) {
-        this->password = password;
-    }
-    bool login() override {                      
+    bool login() override {
         int choice;
         while (true) {
             cout << "\n--- Voter Portal ---\n";
@@ -126,7 +131,7 @@ public:
                 cin >> password;
 
                 MYSQL* conn = DatabaseManager::getConnection();
-                string query = "SELECT name, province, district, is_voted FROM voters WHERE cnic='" + cnic + "' AND password='" + password + "'";
+                string query = "SELECT name, province, district, has_voted_mna, has_voted_mpa FROM voters WHERE cnic='" + cnic + "' AND password='" + password + "'";
 
                 if (mysql_query(conn, query.c_str()) == 0) {
                     MYSQL_RES* res = mysql_store_result(conn);
@@ -135,7 +140,8 @@ public:
                         name = row[0];
                         province = row[1];
                         district = row[2];
-                        hasVoted = (row[3] && string(row[3]) == "1");
+                        hasVotedMNA = (row[3] && string(row[3]) == "1");
+                        hasVotedMPA = (row[4] && string(row[4]) == "1");
                         isLoggedIn = true;
                         cout << "\nLogin successful. Welcome, " << name << "!\n";
                         mysql_free_result(res);
@@ -169,8 +175,17 @@ public:
         while (true) {
             cout << "\n--- Voter Menu ---\n";
             cout << "1. View Results\n";
-            cout << "2. Vote for MNA\n";
-            cout << "3. Vote for MPA\n";
+
+            // Only show MNA option if election is open and voter hasn't voted
+            if (isMNAVotingOpen() && !hasVotedMNA) {
+                cout << "2. Vote for MNA\n";
+            }
+
+            // Only show MPA option if election is open and voter hasn't voted
+            if (isMPAVotingOpen() && !hasVotedMPA) {
+                cout << "3. Vote for MPA\n";
+            }
+
             cout << "4. Logout\n";
             cout << "Enter choice: ";
 
@@ -184,10 +199,20 @@ public:
                 viewResults();
                 break;
             case 2:
-                voteFor("MNA");
+                if (isMNAVotingOpen() && !hasVotedMNA) {
+                    voteFor("MNA");
+                }
+                else {
+                    cout << "Cannot vote for MNA at this time.\n";
+                }
                 break;
             case 3:
-                voteFor("MPA");
+                if (isMPAVotingOpen() && !hasVotedMPA) {
+                    voteFor("MPA");
+                }
+                else {
+                    cout << "Cannot vote for MPA at this time.\n";
+                }
                 break;
             case 4:
                 isLoggedIn = false;
@@ -228,17 +253,9 @@ public:
     }
 
     void voteFor(string type) {
-        if (!isVotingOpen()) {
-            cout << "Voting is currently closed.\n";
-            return;
-        }
-
-        if (hasVoted) {
-            cout << "You have already voted.\n";
-            return;
-        }
-
         MYSQL* conn = DatabaseManager::getConnection();
+
+        // Get candidates based on vote type
         string filter = (type == "MNA") ? "province='" + province + "'" : "district='" + district + "'";
         string query = "SELECT id, name, party FROM candidates WHERE type='" + type + "' AND " + filter;
 
@@ -253,6 +270,7 @@ public:
             return;
         }
 
+        // Display candidates
         int ids[100];
         int idx = 0;
         cout << "\n--- " << type << " Candidates ---\n";
@@ -260,9 +278,7 @@ public:
         while ((row = mysql_fetch_row(res))) {
             int cid = atoi(row[0]);
             if (idx < 100) ids[idx++] = cid;
-            cout << "ID: " << cid
-                << " | Name: " << row[1]
-                << " | Party: " << row[2] << "\n";
+            cout << "ID: " << cid << " | Name: " << row[1] << " | Party: " << row[2] << "\n";
         }
 
         if (idx == 0) {
@@ -273,6 +289,7 @@ public:
 
         mysql_free_result(res);
 
+        // Get voter's choice
         int voteId;
         cout << "Enter Candidate ID to vote for: ";
         if (!Validator::getIntInput(voteId)) {
@@ -280,6 +297,7 @@ public:
             return;
         }
 
+        // Validate choice
         bool valid = false;
         for (int i = 0; i < idx; ++i) {
             if (voteId == ids[i]) {
@@ -293,20 +311,30 @@ public:
             return;
         }
 
+        // Update candidate votes
         string updateVotes = "UPDATE candidates SET votes = votes + 1 WHERE id=" + to_string(voteId);
         if (mysql_query(conn, updateVotes.c_str()) != 0) {
             cout << "Error updating votes: " << mysql_error(conn) << endl;
             return;
         }
 
-        string updateVoted = "UPDATE voters SET is_voted=1 WHERE cnic='" + cnic + "'";
-        if (mysql_query(conn, updateVoted.c_str()) != 0) {
+        // Update voter's voting status for the specific type
+        string voteColumn = (type == "MNA") ? "has_voted_mna" : "has_voted_mpa";
+        string updateVoter = "UPDATE voters SET " + voteColumn + "=1 WHERE cnic='" + cnic + "'";
+        if (mysql_query(conn, updateVoter.c_str()) != 0) {
             cout << "Error updating voter status: " << mysql_error(conn) << endl;
             return;
         }
 
-        hasVoted = true;
-        cout << "Your vote has been cast. Thank you!\n";
+        // Update local state
+        if (type == "MNA") {
+            hasVotedMNA = true;
+        }
+        else {
+            hasVotedMPA = true;
+        }
+
+        cout << "Your vote for " << type << " has been cast. Thank you!\n";
     }
 };
 #endif
